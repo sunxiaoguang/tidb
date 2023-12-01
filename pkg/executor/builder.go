@@ -3309,6 +3309,7 @@ func buildNoRangeTableReader(b *executorBuilder, v *plannercore.PhysicalTableRea
 		tablePlan:        v.GetTablePlan(),
 		storeType:        v.StoreType,
 		batchCop:         v.ReadReqType == plannercore.BatchCop,
+		tableSplit:       v.TableSplit,
 	}
 	e.buildVirtualColumnInfo()
 

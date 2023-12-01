@@ -265,6 +265,8 @@ func (e *ShowExec) fetchAll(ctx context.Context) error {
 		return e.fetchShowAnalyzeStatus(ctx)
 	case ast.ShowRegions:
 		return e.fetchShowTableRegions(ctx)
+	case ast.ShowSplits:
+		return e.fetchShowTableSplits(ctx)
 	case ast.ShowBuiltins:
 		return e.fetchShowBuiltins()
 	case ast.ShowBackups:

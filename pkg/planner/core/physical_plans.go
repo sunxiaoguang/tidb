@@ -139,6 +139,8 @@ type PhysicalTableReader struct {
 	PartitionInfo PartitionInfo
 	// Used by MPP, because MPP plan may contain join/union/union all, it is possible that a physical table reader contains more than 1 table scan
 	PartitionInfos []tableScanAndPartitionInfo
+
+	TableSplit *ast.TableSplit
 }
 
 // PartitionInfo indicates partition helper info in physical plan.
@@ -241,6 +243,7 @@ func (sg *TiKVSingleGather) GetPhysicalTableReader(schema *expression.Schema, st
 		Columns:        sg.Source.TblCols,
 		ColumnNames:    sg.Source.names,
 	}
+	reader.TableSplit = sg.Source.tableSplit
 	reader.SetStats(stats)
 	reader.SetSchema(schema)
 	reader.childrenReqProps = props
@@ -887,6 +890,8 @@ type PhysicalTableScan struct {
 	// for runtime filter
 	runtimeFilterList []*RuntimeFilter
 	maxWaitTimeMs     int
+
+	TableSplit *ast.TableSplit
 }
 
 // Clone implements PhysicalPlan interface.

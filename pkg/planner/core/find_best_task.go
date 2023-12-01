@@ -1532,6 +1532,7 @@ func (ds *DataSource) buildIndexMergeTableScan(tableFilters []expression.Express
 		HandleCols:      ds.handleCols,
 		tblCols:         ds.TblCols,
 		tblColHists:     ds.TblColHists,
+		TableSplit:      ds.tableSplit,
 	}.Init(ds.SCtx(), ds.SelectBlockOffset())
 	ts.SetSchema(ds.schema.Clone())
 	err := setIndexMergeTableScanHandleCols(ds, ts)
@@ -1773,6 +1774,7 @@ func (ds *DataSource) convertToIndexScan(prop *property.PhysicalProperty,
 			physicalTableID: ds.physicalTableID,
 			tblCols:         ds.TblCols,
 			tblColHists:     ds.TblColHists,
+			TableSplit:      ds.tableSplit,
 		}.Init(ds.SCtx(), is.SelectBlockOffset())
 		ts.SetSchema(ds.schema.Clone())
 		// We set `StatsVersion` here and fill other fields in `(*copTask).finishIndexPlan`. Since `copTask.indexPlan` may
@@ -2049,6 +2051,7 @@ func (s *LogicalTableScan) GetPhysicalScan(schema *expression.Schema, stats *pro
 		AccessCondition: s.AccessConds,
 		tblCols:         ds.TblCols,
 		tblColHists:     ds.TblColHists,
+		TableSplit:      ds.tableSplit,
 	}.Init(s.SCtx(), s.SelectBlockOffset())
 	ts.SetStats(stats)
 	ts.SetSchema(schema.Clone())
@@ -2505,6 +2508,7 @@ func (ds *DataSource) getOriginalPhysicalTableScan(prop *property.PhysicalProper
 		constColsByCond: path.ConstCols,
 		prop:            prop,
 		filterCondition: slices.Clone(path.TableFilters),
+		TableSplit:      ds.tableSplit,
 	}.Init(ds.SCtx(), ds.SelectBlockOffset())
 	ts.SetSchema(ds.schema.Clone())
 	rowCount := path.CountAfterAccess

@@ -271,6 +271,7 @@ import (
 	tidbCurrentTSO    "TiDB_CURRENT_TSO"
 	tableKwd          "TABLE"
 	tableSample       "TABLESAMPLE"
+	tableSplit				"TABLESPLIT"
 	stored            "STORED"
 	terminated        "TERMINATED"
 	then              "THEN"
@@ -847,6 +848,7 @@ import (
 	reset                      "RESET"
 	regions                    "REGIONS"
 	region                     "REGION"
+	splits                     "SPLITS"
 	builtinBitAnd
 	builtinBitOr
 	builtinBitXor
@@ -1346,6 +1348,7 @@ import (
 	TableSampleOpt                         "table sample clause optional"
 	TableSampleMethodOpt                   "table sample method optional"
 	TableSampleUnitOpt                     "table sample unit optional"
+	TableSplitOpt													 "table split optional"
 	TableToTable                           "rename table to table"
 	TableToTableList                       "rename table to table by list"
 	TextString                             "text string item"
@@ -6968,6 +6971,7 @@ TiDBKeyword:
 |	"REGIONS"
 |	"REGION"
 |	"RESET"
+|	"SPLITS"
 |	"DRY"
 |	"RUN"
 
@@ -9634,7 +9638,7 @@ TableRef:
 |	JoinTable
 
 TableFactor:
-	TableName PartitionNameListOpt TableAsNameOpt AsOfClauseOpt IndexHintListOpt TableSampleOpt
+	TableName PartitionNameListOpt TableAsNameOpt AsOfClauseOpt IndexHintListOpt TableSampleOpt TableSplitOpt
 	{
 		tn := $1.(*ast.TableName)
 		tn.PartitionNames = $2.([]model.CIStr)
@@ -9644,6 +9648,9 @@ TableFactor:
 		}
 		if $4 != nil {
 			tn.AsOf = $4.(*ast.AsOfClause)
+		}
+		if $7 != nil {
+			tn.TableSplit = $7.(*ast.TableSplit)
 		}
 		$$ = &ast.TableSource{Source: tn, AsName: $3.(model.CIStr)}
 	}
@@ -9667,6 +9674,19 @@ PartitionNameListOpt:
 |	"PARTITION" '(' PartitionNameList ')'
 	{
 		$$ = $3
+	}
+
+TableSplitOpt:
+	/* empty */
+  {
+    $$ = nil
+  }
+| "TABLESPLIT" '(' stringLit ',' stringLit ')' 
+	{
+		$$ = &ast.TableSplit{
+      Start: $3,
+      End: $5,
+    }
 	}
 
 TableAsNameOpt:
@@ -11307,6 +11327,26 @@ ShowStmt:
 		if $6 != nil {
 			stmt.Where = $6.(ast.ExprNode)
 		}
+		$$ = stmt
+	}
+|	"SHOW" "TABLE" TableName PartitionNameListOpt "SPLITS"
+	{
+		stmt := &ast.ShowStmt{
+			Tp:          ast.ShowSplits,
+			Table:       $3.(*ast.TableName),
+			SplitNumber: 0,
+		}
+		stmt.Table.PartitionNames = $4.([]model.CIStr)
+		$$ = stmt
+	}
+|	"SHOW" "TABLE" TableName PartitionNameListOpt "SPLITS" Int64Num
+	{
+		stmt := &ast.ShowStmt{
+			Tp:          ast.ShowSplits,
+			Table:       $3.(*ast.TableName),
+			SplitNumber: $6.(int64),
+		}
+		stmt.Table.PartitionNames = $4.([]model.CIStr)
 		$$ = stmt
 	}
 |	"SHOW" "TABLE" TableName "NEXT_ROW_ID"

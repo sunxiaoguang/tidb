@@ -283,6 +283,7 @@ type TableName struct {
 	IndexHints     []*IndexHint
 	PartitionNames []model.CIStr
 	TableSample    *TableSample
+	TableSplit     *TableSplit
 	// AS OF is used to see the data as it was at a specific point in time.
 	AsOf *AsOfClause
 }
@@ -1035,6 +1036,12 @@ func (s *TableSample) Accept(v Visitor) (node Node, ok bool) {
 		s.RepeatableSeed = node.(ExprNode)
 	}
 	return v.Leave(s)
+}
+
+type TableSplit struct {
+	node
+	Start string
+	End   string
 }
 
 type SelectStmtKind uint8
@@ -2963,6 +2970,7 @@ const (
 	ShowOpenTables
 	ShowAnalyzeStatus
 	ShowRegions
+	ShowSplits
 	ShowBuiltins
 	ShowTableNextRowId
 	ShowBackups
@@ -3028,6 +3036,8 @@ type ShowStmt struct {
 	ShowProfileLimit *Limit // Used for `SHOW PROFILE` syntax
 
 	ImportJobID *int64 // Used for `SHOW IMPORT JOB <ID>` syntax
+
+	SplitNumber int64 // Used for `SHOW TABLE <Table> SPLITS <Max Splits Num> syntax
 }
 
 // Restore implements Node interface.
@@ -3339,6 +3349,16 @@ func (n *ShowStmt) Restore(ctx *format.RestoreCtx) error {
 			ctx.WriteKeyWord(" REGIONS")
 			if err := restoreShowLikeOrWhereOpt(); err != nil {
 				return err
+			}
+			return nil
+		case ShowSplits:
+			ctx.WriteKeyWord("TABLE ")
+			if err := n.Table.Restore(ctx); err != nil {
+				return errors.Annotate(err, "An error occurred while restore ShowStmt.Table")
+			}
+			ctx.WriteKeyWord(" SPLITS")
+			if n.SplitNumber != 0 {
+				ctx.WritePlainf(" %d", n.SplitNumber)
 			}
 			return nil
 		case ShowTableNextRowId:
