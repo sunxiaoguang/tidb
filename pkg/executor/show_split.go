@@ -13,8 +13,8 @@ import (
 	"github.com/pingcap/tidb/pkg/tablecodec"
 )
 
-func (e *ShowExec) fillSplitsToChunk(regions []regionMeta, tbInfo *model.TableInfo) {
-	tableStart := tablecodec.GenTableRecordPrefix(tbInfo.ID)
+func (e *ShowExec) fillSplitsToChunk(regions []regionMeta, physicalID int64, partitionName string) {
+	tableStart := tablecodec.GenTableRecordPrefix(physicalID)
 	tableEnd := tableStart.PrefixNext()
 
 	for _, region := range regions {
@@ -31,8 +31,13 @@ func (e *ShowExec) fillSplitsToChunk(regions []regionMeta, tbInfo *model.TableIn
 		e.result.AppendUint64(0, regionMeta.Id)
 		e.result.AppendString(1, regionStart.String())
 		e.result.AppendString(2, regionEnd.String())
-		e.result.AppendInt64(3, region.approximateSize)
-		e.result.AppendInt64(4, region.approximateKeys)
+		if partitionName != "" {
+			e.result.AppendString(3, partitionName)
+		} else {
+			e.result.AppendNull(3)
+		}
+		e.result.AppendInt64(4, region.approximateSize)
+		e.result.AppendInt64(5, region.approximateKeys)
 	}
 }
 
@@ -71,6 +76,7 @@ func (e *ShowExec) fetchShowTableSplits(ctx context.Context) error {
 	}
 
 	physicalIDs := []int64{}
+	partitionNames := []string{}
 	if pi := tb.Meta().GetPartitionInfo(); pi != nil {
 		for _, name := range e.Table.PartitionNames {
 			pid, err := tables.FindPartitionByName(tb.Meta(), name.L)
@@ -78,10 +84,12 @@ func (e *ShowExec) fetchShowTableSplits(ctx context.Context) error {
 				return err
 			}
 			physicalIDs = append(physicalIDs, pid)
+			partitionNames = append(partitionNames, name.L)
 		}
 		if len(physicalIDs) == 0 {
 			for _, p := range pi.Definitions {
 				physicalIDs = append(physicalIDs, p.ID)
+				partitionNames = append(partitionNames, p.Name.L)
 			}
 		}
 	} else {
@@ -89,15 +97,18 @@ func (e *ShowExec) fetchShowTableSplits(ctx context.Context) error {
 			return plannercore.ErrPartitionClauseOnNonpartitioned
 		}
 		physicalIDs = append(physicalIDs, tb.Meta().ID)
+		partitionNames = append(partitionNames, "")
 	}
 
-	// Get table regions from from pd, not from regionCache, because the region cache maybe outdated.
-	var regions []regionMeta
-	regions, err = getTableRegions(noIndexTable(tb), physicalIDs, tikvStore, splitStore)
-	if err != nil {
-		return err
+	for idx, physicalID := range physicalIDs {
+		// Get table regions from from pd, not from regionCache, because the region cache maybe outdated.
+		regions, err := getTableRegions(noIndexTable(tb), []int64{physicalID}, tikvStore, splitStore)
+		if err != nil {
+			return err
+		}
+
+		e.fillSplitsToChunk(regions, physicalID, partitionNames[idx])
 	}
 
-	e.fillSplitsToChunk(regions, tb.Meta())
 	return nil
 }

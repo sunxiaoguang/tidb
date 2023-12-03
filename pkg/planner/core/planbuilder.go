@@ -3239,6 +3239,7 @@ func buildTableSplitsSchema() (*expression.Schema, types.NameSlice) {
 	schema.Append(buildColumnWithName("", "SPLIT_ID", mysql.TypeLonglong, 4))
 	schema.Append(buildColumnWithName("", "START", mysql.TypeVarchar, 64))
 	schema.Append(buildColumnWithName("", "END", mysql.TypeVarchar, 64))
+	schema.Append(buildColumnWithName("", "PARTITION", mysql.TypeVarchar, 64))
 	schema.Append(buildColumnWithName("", "APPROXIMATE_SIZE(MB)", mysql.TypeLonglong, 64))
 	schema.Append(buildColumnWithName("", "APPROXIMATE_ROWS", mysql.TypeLonglong, 1))
 	return schema.col2Schema(), schema.names
