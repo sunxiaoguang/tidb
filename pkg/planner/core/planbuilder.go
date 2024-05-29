@@ -2923,6 +2923,17 @@ func buildTableRegionsSchema() (*expression.Schema, types.NameSlice) {
 	return schema.col2Schema(), schema.names
 }
 
+func buildTableSplitsSchema() (*expression.Schema, types.NameSlice) {
+	schema := newColumnsWithNames(7)
+	schema.Append(buildColumnWithName("", "SPLIT_ID", mysql.TypeLonglong, 4))
+	schema.Append(buildColumnWithName("", "START", mysql.TypeVarchar, 64))
+	schema.Append(buildColumnWithName("", "END", mysql.TypeVarchar, 64))
+	schema.Append(buildColumnWithName("", "PARTITION", mysql.TypeVarchar, 64))
+	schema.Append(buildColumnWithName("", "APPROXIMATE_SIZE(MB)", mysql.TypeLonglong, 64))
+	schema.Append(buildColumnWithName("", "APPROXIMATE_ROWS", mysql.TypeLonglong, 1))
+	return schema.col2Schema(), schema.names
+}
+
 func buildSplitRegionsSchema() (*expression.Schema, types.NameSlice) {
 	schema := newColumnsWithNames(2)
 	schema.Append(buildColumnWithName("", "TOTAL_SPLIT_REGION", mysql.TypeLonglong, 4))
@@ -3218,13 +3229,18 @@ func (b *PlanBuilder) buildShow(ctx context.Context, show *ast.ShowStmt) (Plan, 
 			err = plannererrors.ErrTableaccessDenied.GenWithStackByArgs("SHOW", user.AuthUsername, user.AuthHostname, show.Table.Name.L)
 		}
 		b.visitInfo = appendVisitInfo(b.visitInfo, mysql.SelectPriv, show.Table.Schema.L, show.Table.Name.L, "", err)
-	case ast.ShowRegions:
+	case ast.ShowRegions, ast.ShowSplits:
 		tableInfo, err := b.is.TableByName(show.Table.Schema, show.Table.Name)
 		if err != nil {
 			return nil, err
 		}
 		if tableInfo.Meta().TempTableType != model.TempTableNone {
-			return nil, plannererrors.ErrOptOnTemporaryTable.GenWithStackByArgs("show table regions")
+			cmd := "regions"
+			if show.Tp == ast.ShowSplits {
+				cmd = "splits"
+			}
+
+			return nil, plannererrors.ErrOptOnTemporaryTable.GenWithStackByArgs(fmt.Sprintf("show table %s", cmd))
 		}
 	case ast.ShowReplicaStatus:
 		return nil, dbterror.ErrNotSupportedYet.GenWithStackByArgs("SHOW {REPLICA | SLAVE} STATUS")
@@ -5122,6 +5138,8 @@ func buildShowSchema(s *ast.ShowStmt, isView bool, isSequence bool) (schema *exp
 		return buildShowWarningsSchema()
 	case ast.ShowRegions:
 		return buildTableRegionsSchema()
+	case ast.ShowSplits:
+		return buildTableSplitsSchema()
 	case ast.ShowEngines:
 		names = []string{"Engine", "Support", "Comment", "Transactions", "XA", "Savepoints"}
 	case ast.ShowConfig:
