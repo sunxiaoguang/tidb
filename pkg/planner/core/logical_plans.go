@@ -1487,6 +1487,9 @@ type DataSource struct {
 	// It's calculated after we generated the access paths and estimated row count for them, and before entering findBestTask.
 	// It considers CountAfterIndex for index paths and CountAfterAccess for table paths and index merge paths.
 	accessPathMinSelectivity float64
+
+	// tableSplit is a split (subset) of the table to read
+	tableSplit *ast.TableSplit
 }
 
 // ExtractCorrelatedCols implements LogicalPlan interface.

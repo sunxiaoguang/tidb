@@ -1046,6 +1046,7 @@ func (p *LogicalJoin) constructInnerTableScanTask(
 		isPartition:     ds.partitionDefIdx != nil,
 		tblCols:         ds.TblCols,
 		tblColHists:     ds.TblColHists,
+		TableSplit:      ds.tableSplit,
 	}.Init(ds.SCtx(), ds.QueryBlockOffset())
 	ts.SetSchema(ds.schema.Clone())
 	if rowCount <= 0 {
@@ -1259,6 +1260,7 @@ func (p *LogicalJoin) constructInnerIndexScanTask(
 			physicalTableID: ds.physicalTableID,
 			tblCols:         ds.TblCols,
 			tblColHists:     ds.TblColHists,
+			TableSplit:      ds.tableSplit,
 		}.Init(ds.SCtx(), ds.QueryBlockOffset())
 		ts.schema = is.dataSourceSchema.Clone()
 		if ds.tableInfo.IsCommonHandle {
